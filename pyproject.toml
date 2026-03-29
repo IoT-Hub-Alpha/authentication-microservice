@@ -4,3 +4,10 @@ target-version = ["py311"]
 #exclude = '''
 #/path/to/dir/.*
 #'''
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "auth_service.settings"
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
