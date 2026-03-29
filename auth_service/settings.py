@@ -59,16 +59,26 @@ WSGI_APPLICATION = "auth_service.wsgi.application"
 
 
 # Database
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("POSTGRES_DB", "iot_microservices"),
-        "USER": os.getenv("POSTGRES_USER", "iot_user"),
-        "PASSWORD": os.getenv("POSTGRES_PASSWORD", "iot_password"),
-        "HOST": os.getenv("POSTGRES_HOST", "localhost"),
-        "PORT": os.getenv("POSTGRES_PORT", "5432"),
+import sys
+
+if "pytest" in sys.modules:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": ":memory:",
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME", "iot_microservices"),
+            "USER": os.getenv("DB_USER", "iot_user"),
+            "PASSWORD": os.getenv("DB_PASSWORD", "iot_password"),
+            "HOST": os.getenv("DB_HOST", "localhost"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+        }
+    }
 
 # Session SSO - same values across all Django services
 SESSION_ENGINE = "django.contrib.sessions.backends.db"

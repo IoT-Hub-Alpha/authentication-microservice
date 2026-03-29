@@ -1,10 +1,10 @@
 {
   "Operators": [
-    "resource.view",
-    "resource.add",
-    "resource.change"
+    "devices.view",
+    "devices.add",
+    "devices.change"
   ],
   "Viewers": [
-    "resource.view"
+    "devices.view"
   ]
 }
