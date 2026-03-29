@@ -1,23 +1,10 @@
 {
   "Operators": [
-    "devices.view",
-    "devices.add",
-    "devices.change",
-    "device_types.view",
-    "events.view",
-    "events.change",
-    "rules.view",
-    "rules.add",
-    "rules.change",
-    "telemetry.view",
-    "notifications.view"
+    "resource.view",
+    "resource.add",
+    "resource.change"
   ],
   "Viewers": [
-    "devices.view",
-    "device_types.view",
-    "events.view",
-    "rules.view",
-    "telemetry.view",
-    "notifications.view"
+    "resource.view"
   ]
 }

@@ -133,26 +133,53 @@ Access tokens contain:
 
 ## Permissions
 
-Permissions are defined in `permissions.json`:
+Permissions are defined in `permissions.json`. This file maps Django groups to permission strings that will be included in JWT tokens.
+
+### Defining Permissions
+
+Edit `permissions.json` to add your group-to-permissions mapping:
 
 ```json
 {
-  "Operators": [
-    "devices.view", "devices.add", "devices.change",
-    "events.view", "events.change",
-    "rules.view", "rules.add", "rules.change",
-    ...
+  "GroupName": [
+    "resource.action",
+    "another_resource.view"
   ],
-  "Viewers": [
-    "devices.view",
-    "events.view",
-    "rules.view",
-    ...
+  "AnotherGroup": [
+    "resource.view"
   ]
 }
 ```
 
-Other microservices check permissions from the JWT:
+**Format:**
+- Keys are Django group names (must match groups created in the database)
+- Values are arrays of permission strings
+- Permission strings typically follow `resource.action` convention (e.g., `devices.view`, `orders.create`)
+
+**Example:**
+```json
+{
+  "Operators": [
+    "devices.view", "devices.add", "devices.change",
+    "events.view"
+  ],
+  "Viewers": [
+    "devices.view",
+    "events.view"
+  ]
+}
+```
+
+### How It Works
+
+1. User authenticates via `/v1/auth/login`
+2. Service looks up user's Django groups
+3. For each group, permissions from `permissions.json` are collected
+4. All permissions are included in the JWT `permissions` claim
+
+### Checking Permissions in Other Services
+
+Other microservices validate the JWT and check permissions:
 
 ```python
 def has_permission(token_payload, required_permission):
