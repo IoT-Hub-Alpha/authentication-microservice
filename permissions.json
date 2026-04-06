@@ -1,0 +1,10 @@
+{
+  "Operators": [
+    "devices.view",
+    "devices.add",
+    "devices.change"
+  ],
+  "Viewers": [
+    "devices.view"
+  ]
+}

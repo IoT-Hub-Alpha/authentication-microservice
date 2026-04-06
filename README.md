@@ -1,23 +1,251 @@
-# Service Name
+# Authentication Microservice
 
-Brief description.
+JWT authentication service for IoT Hub microservices architecture.
+
+## Overview
+
+This service handles user authentication and issues JWT tokens with role-based permissions. Other microservices validate these tokens and check permissions to authorize requests.
+
+## Project Structure
+
+```
+authentication-microservice/
+├── auth_service/              # Django project settings
+│   ├── settings.py
+│   ├── urls.py
+│   └── wsgi.py
+├── authentication/            # Authentication app
+│   ├── management/
+│   │   └── commands/
+│   │       └── setup_roles.py # Create users and groups
+│   ├── services.py            # JWT service
+│   ├── views.py               # API views
+│   └── urls.py
+├── tests/
+│   ├── conftest.py            # Pytest fixtures
+│   ├── test_endpoints.py      # API endpoint tests
+│   └── test_services.py       # Unit tests
+├── permissions.json           # Role-to-permissions mapping
+├── docker-compose.yml         # PostgreSQL for local dev
+├── Dockerfile
+├── manage.py
+└── requirements.txt
+```
 
 ## Quick Start
 
 ```bash
+# 1. Create environment file
 cp .env.example .env
-docker-compose up
+
+# 2. Create virtual environment
+python -m venv venv
+source venv/bin/activate
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Run migrations
+python manage.py migrate
+
+# 5. Create users and groups
+python manage.py setup_roles
+
+# 6. Start the server
+python manage.py runserver 8005
+```
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/v1/auth/login` | POST | Authenticate and get tokens |
+| `/v1/auth/refresh` | POST | Refresh access token |
+| `/health` | GET | Health check |
+
+### POST /v1/auth/login
+
+Authenticate user and return JWT tokens.
+
+**Request:**
+```json
+{
+  "username": "operator",
+  "password": "operator123"
+}
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "Bearer"
+}
+```
+
+### POST /v1/auth/refresh
+
+Get new access token using refresh token.
+
+**Request:**
+```json
+{
+  "refresh_token": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "Bearer"
+}
+```
+
+### GET /health
+
+**Response:**
+```json
+{
+  "status": "healthy"
+}
+```
+
+## JWT Payload
+
+Access tokens contain:
+
+```json
+{
+  "type": "access",
+  "sub": "1",
+  "username": "operator",
+  "email": "operator@example.com",
+  "groups": ["Operators"],
+  "permissions": ["devices.view", "devices.add", "devices.change", ...],
+  "is_staff": true,
+  "is_superuser": false,
+  "iat": 1234567890,
+  "exp": 1234568790
+}
+```
+
+## Permissions
+
+Permissions are defined in `permissions.json`. This file maps Django groups to permission strings that will be included in JWT tokens.
+
+### Defining Permissions
+
+Edit `permissions.json` to add your group-to-permissions mapping:
+
+```json
+{
+  "GroupName": [
+    "resource.action",
+    "another_resource.view"
+  ],
+  "AnotherGroup": [
+    "resource.view"
+  ]
+}
+```
+
+**Format:**
+- Keys are Django group names (must match groups created in the database)
+- Values are arrays of permission strings
+- Permission strings typically follow `resource.action` convention (e.g., `devices.view`, `orders.create`)
+
+**Example:**
+```json
+{
+  "Operators": [
+    "devices.view", "devices.add", "devices.change",
+    "events.view"
+  ],
+  "Viewers": [
+    "devices.view",
+    "events.view"
+  ]
+}
+```
+
+### How It Works
+
+1. User authenticates via `/v1/auth/login`
+2. Service looks up user's Django groups
+3. For each group, permissions from `permissions.json` are collected
+4. All permissions are included in the JWT `permissions` claim
+
+### Checking Permissions in Other Services
+
+Other microservices validate the JWT and check permissions:
+
+```python
+def has_permission(token_payload, required_permission):
+    return required_permission in token_payload.get("permissions", [])
+
+# Usage
+if has_permission(token, "devices.add"):
+    # allow creating device
+```
+
+## Management Commands
+
+### setup_roles
+
+Create admin superuser, groups, and test users.
+
+```bash
+# Full setup
+python manage.py setup_roles
+
+# Skip specific parts
+python manage.py setup_roles --skip-superuser
+python manage.py setup_roles --skip-groups
+python manage.py setup_roles --skip-users
 ```
 
 ## Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `SERVICE_NAME` | Service name | Yes |
-| `DEBUG` | Debug mode | No |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DEBUG` | Debug mode | `false` |
+| `DJANGO_SECRET_KEY` | Django secret key | - |
+| `JWT_SECRET_KEY` | JWT signing key | - |
+| `JWT_ACCESS_TOKEN_LIFETIME_MINUTES` | Access token lifetime | `15` |
+| `JWT_REFRESH_TOKEN_LIFETIME_DAYS` | Refresh token lifetime | `7` |
+| `POSTGRES_HOST` | Database host | `localhost` |
+| `POSTGRES_PORT` | Database port | `5432` |
+| `POSTGRES_DB` | Database name | `iot_microservices` |
+| `POSTGRES_USER` | Database user | `iot_user` |
+| `POSTGRES_PASSWORD` | Database password | `iot_password` |
+| `ADMIN_USERNAME` | Superuser username | `admin` |
+| `ADMIN_EMAIL` | Superuser email | `admin@example.com` |
+| `ADMIN_PASSWORD` | Superuser password | `admin123` |
 
 ## Testing
 
 ```bash
+# Install dev dependencies
+pip install -r requirements-dev.txt
+
+# Run all tests
 pytest
+
+# Run with coverage
+pytest --cov=authentication
+
+# Run specific test file
+pytest tests/test_endpoints.py
+```
+
+## Docker
+
+```bash
+# Build image
+docker build -t auth-service .
+
+# Run container
+docker run -p 8005:8005 --env-file .env auth-service
 ```
