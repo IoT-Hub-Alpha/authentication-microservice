@@ -8,5 +8,6 @@ exclude =
     .git,
     __pycache__,
     **/migrations/**,
+    settings.py,
     venv,
     .venv,

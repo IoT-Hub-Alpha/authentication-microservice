@@ -101,6 +101,7 @@ class HealthView(View):
     def get(self, request):
         return JsonResponse({"status": "healthy"})
 
+
 @method_decorator(csrf_exempt, name="dispatch")
 class AdminTokenLoginView(View):
     def post(self, request):
