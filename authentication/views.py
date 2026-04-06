@@ -1,13 +1,15 @@
 import json
 
 import jwt
-from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import authenticate, get_user_model, login
 from django.http import JsonResponse
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
 from .services import JWTService
+
+from .helpers.verify_jwt import verify_jwt_and_get_user
 
 User = get_user_model()
 
@@ -98,3 +100,17 @@ class HealthView(View):
 
     def get(self, request):
         return JsonResponse({"status": "healthy"})
+
+
+@method_decorator(csrf_exempt, name="dispatch")
+class AdminTokenLoginView(View):
+    def post(self, request):
+        user = verify_jwt_and_get_user(request, User)
+        if user is None:
+            return JsonResponse({"detail": "Invalid token"}, status=401)
+
+        if not user.is_staff:
+            return JsonResponse({"detail": "Not allowed"}, status=403)
+
+        login(request, user)
+        return JsonResponse({"detail": "ok"})
